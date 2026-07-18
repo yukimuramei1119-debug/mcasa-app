@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCASA 管理後台</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+:root{
+  --cream:#FFF8EE;--choco:#7B3F00;--warm-orange:#FF8C42;
+  --text-dark:#3D2B1F;--text-mid:#6B4F3A;--card:#FFFDF7;
+  --shadow:rgba(61,43,31,.12);--green:#95D5B2;--red:#E53E3E;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito','Noto Sans TC',sans-serif;background:var(--cream);color:var(--text-dark);min-height:100vh;}
+
+/* LOGIN */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(150deg,#FFF3D6,#FFE4EE);}
+.login-card{background:var(--card);border-radius:24px;padding:36px 32px;max-width:440px;width:100%;box-shadow:0 8px 28px var(--shadow);}
+.login-title{font-size:22px;font-weight:900;color:var(--choco);text-align:center;margin-bottom:6px;}
+.login-sub{font-size:13px;color:var(--text-mid);text-align:center;margin-bottom:24px;}
+.form-label{display:block;font-size:13px;font-weight:700;color:var(--text-mid);margin-bottom:6px;}
+.form-input{width:100%;padding:12px 15px;border:2.5px solid #E8D5BE;border-radius:12px;font-size:14px;font-family:inherit;background:#FFFDF7;outline:none;margin-bottom:14px;}
+.form-input:focus{border-color:var(--warm-orange);}
+.btn{display:block;width:100%;padding:14px;background:var(--warm-orange);color:white;border:none;border-radius:50px;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 4px 0 #c96e2a;}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 #c96e2a;}
+.login-err{color:var(--red);font-size:13px;font-weight:700;text-align:center;margin-top:12px;min-height:18px;}
+.login-note{background:#FFF3E0;border-radius:12px;padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.7;margin-top:16px;}
+
+/* DASHBOARD */
+#dash{display:none;padding:20px;max-width:1100px;margin:0 auto;}
+.dash-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+.dash-title{font-size:24px;font-weight:900;color:var(--choco);}
+.dash-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.btn-sm{padding:10px 20px;background:white;border:2px solid var(--choco);border-radius:50px;font-size:13px;font-weight:700;color:var(--choco);cursor:pointer;font-family:inherit;}
+.btn-sm:hover{background:#FFD166;}
+.btn-sm.primary{background:var(--warm-orange);border-color:var(--warm-orange);color:white;}
+
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--card);border-radius:16px;padding:16px 18px;box-shadow:0 4px 14px var(--shadow);}
+.stat-num{font-size:28px;font-weight:900;color:var(--choco);}
+.stat-label{font-size:12px;color:var(--text-mid);font-weight:700;}
+
+.filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.filter-input{padding:10px 14px;border:2px solid #E8D5BE;border-radius:12px;font-size:13px;font-family:inherit;background:white;outline:none;}
+.filter-input:focus{border-color:var(--warm-orange);}
+
+.session-card{background:var(--card);border-radius:18px;padding:18px 20px;box-shadow:0 4px 14px var(--shadow);margin-bottom:14px;}
+.session-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;cursor:pointer;}
+.session-name{font-size:16px;font-weight:900;color:var(--choco);}
+.session-meta{font-size:12px;color:var(--text-mid);}
+.story-row{border-top:1px solid #F0E8D8;padding:12px 0;}
+.story-row-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+.story-name{font-size:14px;font-weight:700;}
+.story-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.chip{display:inline-block;padding:2px 10px;border-radius:50px;font-size:11px;font-weight:900;}
+.chip.skip{background:#EEE;color:#888;}
+.chip.dur{background:#E8F4FD;color:#2B6CB0;}
+.chip.order{background:#FFF3E0;color:#B7791F;}
+.transcript{background:#FFF8EE;border-radius:10px;padding:10px 14px;font-size:13px;color:var(--text-mid);line-height:1.7;margin-top:8px;white-space:pre-wrap;}
+audio{height:36px;max-width:100%;}
+.btn-mini{padding:6px 14px;background:white;border:1.5px solid var(--choco);border-radius:50px;font-size:12px;font-weight:700;color:var(--choco);cursor:pointer;font-family:inherit;}
+.btn-mini:hover{background:#FFD166;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-mid);}
+.spinner{width:40px;height:40px;border:5px solid #F0E8D8;border-top-color:var(--warm-orange);border-radius:50%;animation:spin .8s linear infinite;margin:40px auto;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-title">🍦🍫 MCASA 管理後台</div>
+    <div class="login-sub">請輸入你的 Supabase 金鑰登入</div>
+    <label class="form-label">Supabase Project URL</label>
+    <input type="text" class="form-input" id="in-url" placeholder="https://xxxx.supabase.co">
+    <label class="form-label">Service Role Key（管理金鑰）</label>
+    <input type="password" class="form-input" id="in-key" placeholder="eyJhbGci...">
+    <button class="btn" onclick="login()">登入</button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-note">
+      🔑 金鑰位置：Supabase 專案 → Settings → API → <strong>service_role</strong> key<br>
+      ⚠️ 此金鑰有完整權限，請勿分享給他人。金鑰只存在你這台裝置的瀏覽器裡。
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash">
+  <div class="dash-header">
+    <div class="dash-title">📊 錄音收集後台</div>
+    <div class="dash-actions">
+      <button class="btn-sm" onclick="loadData()">🔄 重新整理</button>
+      <button class="btn-sm" onclick="exportCSV()">📄 匯出逐字稿CSV</button>
+      <button class="btn-sm" onclick="logout()">登出</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-num" id="stat-sessions">0</div><div class="stat-label">受測人次</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-recordings">0</div><div class="stat-label">錄音總數</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-skips">0</div><div class="stat-label">跳過次數</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-minutes">0</div><div class="stat-label">總錄音分鐘</div></div>
+  </div>
+
+  <div class="filter-row">
+    <input type="text" class="filter-input" id="filter-class" placeholder="🔍 篩選班級代碼" oninput="renderList()">
+    <input type="text" class="filter-input" id="filter-student" placeholder="🔍 篩選座號" oninput="renderList()">
+  </div>
+
+  <div id="list-area"><div class="spinner"></div></div>
+</div>
+
+<script>
+let sb=null, allRows=[];
+
+const STORY_NAMES={practice:'練習：騎腳踏車去公園玩',F1:'爸爸1：準備考試',F2:'爸爸2：騎腳踏車',M1:'媽媽1：逛街',M2:'媽媽2：準備晚餐'};
+
+// Persist within session only
+function login(){
+  const url=document.getElementById('in-url').value.trim();
+  const key=document.getElementById('in-key').value.trim();
+  if(!url||!key){document.getElementById('login-err').textContent='請填寫URL和金鑰';return;}
+  try{
+    sb=supabase.createClient(url,key);
+    sessionStorage.setItem('mcasa_url',url);
+    sessionStorage.setItem('mcasa_key',key);
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('dash').style.display='block';
+    loadData();
+  }catch(e){
+    document.getElementById('login-err').textContent='連線失敗，請檢查URL和金鑰';
+  }
+}
+
+function logout(){
+  sessionStorage.clear();
+  location.reload();
+}
+
+async function loadData(){
+  document.getElementById('list-area').innerHTML='<div class="spinner"></div>';
+  const{data,error}=await sb.from('submissions').select('*').order('created_at',{ascending:false});
+  if(error){
+    document.getElementById('list-area').innerHTML=`<div class="empty-state">❌ 讀取失敗：${error.message}<br>請確認金鑰是否為 service_role key</div>`;
+    return;
+  }
+  allRows=data||[];
+  updateStats();
+  renderList();
+}
+
+function updateStats(){
+  const sessions=new Set(allRows.map(r=>r.session_id));
+  const recs=allRows.filter(r=>!r.skipped&&r.audio_path);
+  const skips=allRows.filter(r=>r.skipped);
+  const mins=Math.round(recs.reduce((a,r)=>a+(r.duration_sec||0),0)/60);
+  document.getElementById('stat-sessions').textContent=sessions.size;
+  document.getElementById('stat-recordings').textContent=recs.length;
+  document.getElementById('stat-skips').textContent=skips.length;
+  document.getElementById('stat-minutes').textContent=mins;
+}
+
+function renderList(){
+  const fc=document.getElementById('filter-class').value.trim().toLowerCase();
+  const fs=document.getElementById('filter-student').value.trim().toLowerCase();
+  let rows=allRows;
+  if(fc)rows=rows.filter(r=>(r.class||'').toLowerCase().includes(fc));
+  if(fs)rows=rows.filter(r=>(r.student_id||'').toLowerCase().includes(fs));
+
+  // group by session
+  const groups={};
+  rows.forEach(r=>{
+    if(!groups[r.session_id])groups[r.session_id]=[];
+    groups[r.session_id].push(r);
+  });
+
+  const area=document.getElementById('list-area');
+  const keys=Object.keys(groups);
+  if(keys.length===0){
+    area.innerHTML='<div class="empty-state">📭 目前沒有資料<br>學生完成錄音後會自動出現在這裡</div>';
+    return;
+  }
+
+  area.innerHTML=keys.map(sid=>{
+    const rows=groups[sid];
+    const first=rows[0];
+    const date=new Date(first.created_at).toLocaleString('zh-TW');
+    // 依施測順序排序
+    const sorted=[...rows].sort((a,b)=>(a.order_index??99)-(b.order_index??99));
+    const storyRows=sorted.map(r=>{
+      const name=STORY_NAMES[r.story_id]||r.story_id;
+      const orderBadge=(r.order_index!=null)?`<span class="chip order">第${r.order_index}順位</span> `:'';
+      let tools='';
+      if(r.skipped){
+        tools='<span class="chip skip">已跳過</span>';
+      }else{
+        tools=`<span class="chip dur">${r.duration_sec||0}秒</span>
+          <button class="btn-mini" onclick="playAudio(this,'${r.audio_path}')">▶️ 播放</button>
+          <button class="btn-mini" onclick="dlAudio('${r.audio_path}')">⬇️ 下載</button>`;
+      }
+      const transcript=r.transcript?`<div class="transcript">${escapeHtml(r.transcript)}</div>`:(r.skipped?'':'<div class="transcript" style="opacity:.5">（無逐字稿）</div>');
+      return`<div class="story-row">
+        <div class="story-row-head">
+          <span class="story-name">${orderBadge}${name}</span>
+          <span class="story-tools">${tools}</span>
+        </div>
+        <div class="audio-slot"></div>
+        ${transcript}
+      </div>`;
+    }).join('');
+    return`<div class="session-card">
+      <div class="session-head">
+        <span class="session-name">👦 ${escapeHtml(first.class)}／${escapeHtml(first.student_id)}</span>
+        <span class="session-meta">${date}｜${first.lang==='sc'?'簡體':'繁體'}</span>
+      </div>
+      ${storyRows}
+    </div>`;
+  }).join('');
+}
+
+async function playAudio(btn,path){
+  if(!path)return;
+  const{data,error}=await sb.storage.from('recordings').createSignedUrl(path,3600);
+  if(error){alert('無法取得音檔：'+error.message);return;}
+  const slot=btn.closest('.story-row').querySelector('.audio-slot');
+  slot.innerHTML=`<audio controls autoplay src="${data.signedUrl}" style="margin-top:8px;width:100%"></audio>`;
+}
+
+async function dlAudio(path){
+  if(!path)return;
+  const{data,error}=await sb.storage.from('recordings').download(path);
+  if(error){alert('下載失敗：'+error.message);return;}
+  const url=URL.createObjectURL(data);
+  const a=document.createElement('a');
+  a.href=url;a.download=path.replace(/\//g,'_');a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportCSV(){
+  if(allRows.length===0){alert('沒有資料可匯出');return;}
+  const header=['日期','班級代碼','座號','施測順位','故事','語言','秒數','是否跳過','逐字稿'];
+  const lines=allRows.map(r=>[
+    new Date(r.created_at).toLocaleString('zh-TW'),
+    r.class,r.student_id,
+    r.order_index??'',
+    STORY_NAMES[r.story_id]||r.story_id,
+    r.lang==='sc'?'簡體':'繁體',
+    r.duration_sec||0,
+    r.skipped?'是':'否',
+    (r.transcript||'').replace(/"/g,'""')
+  ].map(v=>`"${v}"`).join(','));
+  const csv='\uFEFF'+[header.join(','),...lines].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`MCASA_逐字稿_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// auto-login if session
+window.onload=()=>{
+  const url=sessionStorage.getItem('mcasa_url');
+  const key=sessionStorage.getItem('mcasa_key');
+  if(url&&key){
+    document.getElementById('in-url').value=url;
+    document.getElementById('in-key').value=key;
+    login();
+  }
+};
+</script>
+</body>
+</html>
